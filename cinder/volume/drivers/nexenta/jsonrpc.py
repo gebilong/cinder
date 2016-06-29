@@ -32,6 +32,7 @@ LOG = logging.getLogger(__name__)
 socket.setdefaulttimeout(100)
 session = requests.Session()
 
+
 class NexentaJSONProxy(object):
 
     retry_exc_tuple = (requests.exceptions.ConnectionError,)
