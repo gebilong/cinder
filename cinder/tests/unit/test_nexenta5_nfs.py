@@ -77,7 +77,7 @@ class TestNexentaNfsDriver(test.TestCase):
         self.cfg.nexenta_user = 'user'
         self.cfg.nexenta_password = 'pass'
         self.cfg.max_over_subscription_ratio = 20.0
-        self.cfg.nas_ip = '1.1.1.1'
+        self.cfg.nas_host = '1.1.1.1'
         self.cfg.nas_share_path = 'pool/share'
         self.nef_mock = mock.Mock()
         self.stubs.Set(jsonrpc, 'NexentaJSONProxy',
@@ -155,12 +155,12 @@ class TestNexentaNfsDriver(test.TestCase):
         self.nef_mock.delete.assert_called_with(url)
 
     @patch('cinder.volume.drivers.nexenta.ns5.nfs.'
+           'NexentaNfsDriver.extend_volume')
+    @patch('cinder.volume.drivers.nexenta.ns5.nfs.'
            'NexentaNfsDriver.local_path')
-    @patch('cinder.volume.drivers.remotefs.'
-           'RemoteFSDriver._create_sparsed_file')
     @patch('cinder.volume.drivers.nexenta.ns5.nfs.'
            'NexentaNfsDriver._share_folder')
-    def test_create_volume_from_snapshot(self, share, create, path):
+    def test_create_volume_from_snapshot(self, share, path, extend):
         self._create_volume_db_entry()
         url = ('storage/filesystems/pool%2Fshare%2Fvolume2/promote')
 
@@ -169,7 +169,7 @@ class TestNexentaNfsDriver(test.TestCase):
         self.nef_mock.post.assert_called_with(url)
 
         # make sure the volume get extended!
-        create.assert_has_calls(path, 2)
+        extend.assert_called_with(self.TEST_VOLUME2, 2)
 
     @patch('cinder.volume.drivers.nexenta.ns5.nfs.'
            'NexentaNfsDriver.local_path')
@@ -183,19 +183,20 @@ class TestNexentaNfsDriver(test.TestCase):
             'path',
             root_helper='sudo cinder-rootwrap /etc/cinder/rootwrap.conf',
             run_as_root=True)
-        self.cfg.nexenta_sparsed_volumes = False
-        self.drv.extend_volume(self.TEST_VOLUME, 2)
-        _execute.assert_called_with(
-            'dd', 'if=/dev/zero', 'seek=1073741824',
-            'of=path',
-            'bs=1M', 'count=1024',
-            root_helper='sudo cinder-rootwrap /etc/cinder/rootwrap.conf',
-            run_as_root=True)
+        with mock.patch.object(self.cfg,
+                               'nexenta_sparsed_volumes',
+                               False):
+            self.drv.extend_volume(self.TEST_VOLUME, 2)
+            _execute.assert_called_with(
+                'dd', 'if=/dev/zero', 'seek=1073741824',
+                'of=path',
+                'bs=1M', 'count=1024',
+                root_helper='sudo cinder-rootwrap /etc/cinder/rootwrap.conf',
+                run_as_root=True)
 
     def test_get_capacity_info(self):
         self.nef_mock.get.return_value = {
             'bytesAvailable': 1000,
             'bytesUsed': 100}
-
         self.assertEqual(
             (1000, 900, 100), self.drv._get_capacity_info('pool/share'))

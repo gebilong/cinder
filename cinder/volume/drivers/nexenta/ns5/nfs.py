@@ -12,12 +12,6 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-:mod:`nexenta.nfs` -- Driver to store volumes on NexentaStor Appliance.
-=======================================================================
-
-.. automodule:: nexenta.nfs
-"""
 
 import hashlib
 import os
@@ -34,7 +28,7 @@ from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 from cinder.volume.drivers import nfs
 
-VERSION = '1.0.0'
+VERSION = '1.1.0'
 LOG = logging.getLogger(__name__)
 
 
@@ -42,6 +36,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
     """Executes volume driver commands on Nexenta Appliance.
 
     Version history:
+        1.1.0 - nas_ip option is renamed to nas_host.
         1.0.0 - Initial driver version.
     """
 
@@ -68,7 +63,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         self.sparsed_volumes = self.configuration.nexenta_sparsed_volumes
         self.nef = None
         self.nef_protocol = self.configuration.nexenta_rest_protocol
-        self.nef_host = self.configuration.nas_ip
+        self.nef_host = self.configuration.nas_host
         self.share = self.configuration.nas_share_path
         self.nef_port = self.configuration.nexenta_rest_port
         self.nef_user = self.configuration.nexenta_user
@@ -242,7 +237,9 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                  {'id': volume['id'], 'size': new_size})
         if getattr(self.configuration,
                    self.driver_prefix + '_sparsed_volumes'):
-            self._create_sparsed_file(self.local_path(volume), new_size)
+            self._execute('truncate', '-s', '%sG' % new_size,
+                          self.local_path(volume),
+                          run_as_root=self._execute_as_root)
         else:
             block_size_mb = 1
             block_count = ((new_size - volume['size']) * units.Gi /
@@ -331,8 +328,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                             'filesystem': volume['name']})
             raise
 
-        if (('size' in volume) and (
-                volume['size'] > snapshot['volume_size'])):
+        if volume['size'] > snapshot['volume_size']:
             self.extend_volume(volume, volume['size'])
         return {'provider_location': volume['provider_location']}
 
