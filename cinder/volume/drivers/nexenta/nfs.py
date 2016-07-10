@@ -118,8 +118,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                 if not nms.folder.object_exists(folder):
                     raise LookupError(_("Folder %s does not exist in Nexenta "
                                         "Store appliance"), folder)
-                if (
-                    not folder in nms.netstorsvc.get_shared_folders(
+                if not (folder in nms.netstorsvc.get_shared_folders(
                         'svc:/network/nfs/server:default', '')):
                     self._share_folder(nms, volume_name, dataset)
                 self._get_capacity_info(nfs_share)
