@@ -25,11 +25,11 @@ SHOULD include dedicated exception logging.
 import sys
 
 from oslo_config import cfg
+from oslo_log import log as logging
 import six
 import webob.exc
 
 from cinder.i18n import _, _LE
-from cinder.openstack.common import log as logging
 
 
 LOG = logging.getLogger(__name__)
@@ -945,3 +945,8 @@ class WebDAVClientError(CinderException):
         message = _("The WebDAV request failed. Reason: %(msg)s, "
                     "Return code/reason: %(code)s, Source Volume: %(src)s, "
                     "Destination Volume: %(dst)s, Method: %(method)s.")
+
+
+# NexentaStor driver exception
+class NexentaException(VolumeDriverException):
+    message = _("%(message)s")
